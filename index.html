@@ -270,11 +270,12 @@ footer {
 }
 .modal-overlay.open .modal { transform: translateY(0); }
 .modal-hero {
-  background: var(--bg-subtle); height: 280px;
+  background: var(--bg-subtle);
   display: flex; align-items: center; justify-content: center;
   border-bottom: 1px solid var(--border); overflow: hidden; position: relative;
+  min-height: 160px;
 }
-.modal-hero img { width: 100%; height: 100%; object-fit: cover; display: none; }
+.modal-hero img { max-width: 100%; max-height: 540px; width: auto; height: auto; object-fit: contain; display: none; }
 .modal-hero img.loaded { display: block; }
 .modal-placeholder {
   display: flex; flex-direction: column; align-items: center; gap: 10px;
@@ -289,6 +290,22 @@ footer {
   font-size: 16px; color: var(--text-muted); transition: all 0.15s;
 }
 .modal-close:hover { background: white; color: var(--text); }
+.carousel-btn {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 38px; height: 38px; border-radius: 50%;
+  background: rgba(255,255,255,0.90); border: 1px solid var(--border);
+  cursor: pointer; display: none; align-items: center; justify-content: center;
+  color: var(--text); transition: all 0.15s; z-index: 3;
+}
+.carousel-btn:hover { background: white; box-shadow: var(--shadow-lg); }
+.carousel-prev { left: 12px; }
+.carousel-next { right: 12px; }
+.carousel-counter {
+  position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.48); color: white;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.05em;
+  padding: 3px 10px; border-radius: 20px; display: none; pointer-events: none;
+}
 .modal-body { padding: 36px; }
 .modal-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
 .modal-title { font-size: 24px; font-weight: 600; margin-bottom: 6px; }
@@ -339,7 +356,8 @@ footer {
   .modal-body { padding: 24px; }
 }
 @media (max-width: 480px) {
-  .modal-hero { height: 180px; }
+  .modal-hero { min-height: 120px; }
+  .modal-hero img { max-height: 320px; }
 }
 
 /* SVG icons */
@@ -565,6 +583,13 @@ svg.icon { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-w
         <span id="modalPlaceholderText">[ Photo ]</span>
       </div>
       <img id="modalImg" src="" alt="">
+      <button class="carousel-btn carousel-prev" id="carouselPrev" aria-label="Previous image">
+        <svg class="icon" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <button class="carousel-btn carousel-next" id="carouselNext" aria-label="Next image">
+        <svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <div class="carousel-counter" id="carouselCounter"></div>
       <button class="modal-close" id="modalClose" aria-label="Close">&times;</button>
     </div>
     <div class="modal-body">
@@ -929,21 +954,9 @@ function openModal(i) {
   document.getElementById('csLearned').textContent = p.learned;
   document.getElementById('modalPlaceholderText').textContent = p.placeholder;
 
-  // Hero image in modal
-  const mImg = document.getElementById('modalImg');
-  const mPh  = document.getElementById('modalPlaceholder');
-  const mSrc = IMAGE_MAP[p.id];
-  mImg.classList.remove('loaded');
-  mImg.style.display = '';
-  mPh.style.display  = '';
-  if (mSrc) {
-    mImg.src = mSrc;
-    mImg.alt = p.title;
-    mImg.onload  = () => { mImg.classList.add('loaded'); mPh.style.display = 'none'; };
-    mImg.onerror = () => { mImg.style.display = 'none'; mPh.style.display = ''; };
-  } else {
-    mImg.src = '';
-  }
+  carouselImages = [];
+  showCarouselSlide(0);   // show placeholder immediately while probing
+  loadAllProjectImages(p.id, imgs => { carouselImages = imgs; showCarouselSlide(0); });
 
   document.getElementById('modalTags').innerHTML = p.tags.map(t => `<span class="tag">${t}</span>`).join('');
   document.getElementById('csTools').innerHTML = p.tools.map(t => `<span class="tool-tag">${t}</span>`).join('');
@@ -967,48 +980,105 @@ document.getElementById('modalClose').addEventListener('click', closeModal);
 document.getElementById('modalOverlay').addEventListener('click', e => {
   if (e.target === document.getElementById('modalOverlay')) closeModal();
 });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+  if (document.getElementById('modalOverlay').classList.contains('open')) {
+    if (e.key === 'ArrowLeft')  showCarouselSlide(carouselIdx - 1);
+    if (e.key === 'ArrowRight') showCarouselSlide(carouselIdx + 1);
+  }
+});
 
-// ── HOW TO ADD YOUR OWN PHOTOS ────────────────────────────────────────────
-// 1. Add your image files to the same folder as this HTML file.
-// 2. Update the src values below to match your filenames.
-// 3. The placeholder text will disappear automatically when the image loads.
-//
-// Example: to add a photo for ArcLoRaM, change "" below to "arclora.jpg"
-//          and place arclora.jpg in the same folder as this file.
-//
-// ── HOW TO ADD PHOTOS ─────────────────────────────────────────────────────
-// Place image files in the same folder as this HTML file, then add the
-// filename next to the matching project ID below.
-// The placeholder disappears automatically when the image loads.
-const IMAGE_MAP = {
-  "arclora":       "Pictures/ArcLoRaM_PCB.png",
-  "startracker":   "Pictures/Startrackfront.png",
-  "wheelspeed":    "Pictures/PCB_WheelSPeedSensor.png",
-  "foundnotlost":  "Pictures/Lost_Not_Found.png",
-  "zaps":          "Pictures/Shooting_Target.png",
-  "firenode":      "Pictures/Fire_Detector.png",
-  "regbot":        "Pictures/REGBOT.png",
-  "varmestekop":   "",
-  "drones":        "Pictures/Skærmbillede 2025-05-04 201055.png",
-  "birdair":       "",
-};
+// ── Carousel ──────────────────────────────────────────────────────────────
+let carouselImages = [];
+let carouselIdx    = 0;
 
-function applyImages() {
-  PROJECTS.forEach(p => {
-    const src = IMAGE_MAP[p.id];
-    if (!src) return;
-    const img = document.getElementById('img-' + p.id);
-    const ph  = document.getElementById('ph-' + p.id);
-    if (img && ph) {
-      img.src = src;
-      img.onload = () => { img.classList.add('loaded'); ph.style.display = 'none'; };
+function showCarouselSlide(idx) {
+  const imgs  = carouselImages;
+  const total = imgs.length;
+  const mImg    = document.getElementById('modalImg');
+  const mPh     = document.getElementById('modalPlaceholder');
+  const counter = document.getElementById('carouselCounter');
+  const prev    = document.getElementById('carouselPrev');
+  const next    = document.getElementById('carouselNext');
+
+  if (total === 0) {
+    carouselIdx = 0;
+    mImg.src = ''; mImg.classList.remove('loaded'); mImg.style.display = '';
+    mPh.style.display = '';
+    counter.style.display = prev.style.display = next.style.display = 'none';
+    return;
+  }
+
+  carouselIdx = ((idx % total) + total) % total;
+  mPh.style.display = 'none';
+  mImg.classList.remove('loaded');
+  mImg.style.display = '';
+  mImg.src = imgs[carouselIdx];
+  mImg.onload  = () => mImg.classList.add('loaded');
+  mImg.onerror = () => { mImg.style.display = 'none'; mPh.style.display = ''; };
+
+  if (total > 1) {
+    counter.textContent   = `${carouselIdx + 1} / ${total}`;
+    counter.style.display = 'block';
+    prev.style.display = next.style.display = 'flex';
+  } else {
+    counter.style.display = prev.style.display = next.style.display = 'none';
+  }
+}
+
+document.getElementById('carouselPrev').addEventListener('click', e => {
+  e.stopPropagation(); showCarouselSlide(carouselIdx - 1);
+});
+document.getElementById('carouselNext').addEventListener('click', e => {
+  e.stopPropagation(); showCarouselSlide(carouselIdx + 1);
+});
+
+// ── Image auto-discovery ───────────────────────────────────────────────────
+// Name photos  1.jpg · 2.png · 3.jpg … inside Pictures/<project-id>/
+// Drop a file in → it appears. Delete it → gone. No HTML editing needed.
+
+const EXTS      = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+const IMAGE_MAP = {};   // lazy cache: project id → [src, src, …]
+
+// Card thumbnail — tries 1.jpg, 1.jpeg, 1.png … directly via native <img>
+function loadCardImage(id) {
+  const img = document.getElementById('img-' + id);
+  const ph  = document.getElementById('ph-'  + id);
+  if (!img || !ph) return;
+  function tryExt(e) {
+    if (e >= EXTS.length) return;                // no image found for this project
+    img.onload  = () => { img.classList.add('loaded'); ph.style.display = 'none'; };
+    img.onerror = () => tryExt(e + 1);
+    img.src = `Pictures/${id}/1.${EXTS[e]}`;
+  }
+  tryExt(0);
+}
+
+// Builds the full image list for the modal carousel using a hidden DOM element
+function loadAllProjectImages(id, callback) {
+  if (IMAGE_MAP[id]) { callback(IMAGE_MAP[id]); return; }
+  const folder = `Pictures/${id}/`;
+  const found  = [];
+  const probe  = document.createElement('img');
+  probe.style.cssText = 'position:absolute;width:0;height:0;opacity:0;pointer-events:none;';
+  document.body.appendChild(probe);
+
+  function step(n, e) {
+    if (n > 30 || e >= EXTS.length) {   // safety cap or all extensions failed → done
+      document.body.removeChild(probe);
+      IMAGE_MAP[id] = found;
+      callback(found);
+      return;
     }
-  });
+    probe.onload  = () => { found.push(`${folder}${n}.${EXTS[e]}`); step(n + 1, 0); };
+    probe.onerror = () => step(n, e + 1);
+    probe.src = `${folder}${n}.${EXTS[e]}`;
+  }
+  step(1, 0);
 }
 
 renderCards();
-applyImages();
+PROJECTS.forEach(p => loadCardImage(p.id));
 </script>
 </body>
 </html>

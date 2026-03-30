@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(BASE=\"C:/Users/marcu/OneDrive/Dokumenter/Portfolio/Pictures\")",
+      "Bash(mkdir -p \"$BASE/arclora\" \"$BASE/startracker\" \"$BASE/wheelspeed\" \"$BASE/foundnotlost\" \"$BASE/zaps\" \"$BASE/firenode\" \"$BASE/regbot\" \"$BASE/varmestekop\" \"$BASE/drones\" \"$BASE/birdair\")",
+      "Bash(mv \"$BASE/ArcLoRaM_PCB.png\" \"$BASE/arclora/\")",
+      "Bash(mv \"$BASE/Lipo_Charger.png\" \"$BASE/arclora/\")",
+      "Bash(mv \"$BASE/Startrackfront.png\" \"$BASE/startracker/\")"
+    ]
+  }
+}
